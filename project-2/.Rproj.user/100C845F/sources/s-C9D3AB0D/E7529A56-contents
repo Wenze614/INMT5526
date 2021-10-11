@@ -1,0 +1,176 @@
+######
+
+### practice script for classification trees.
+
+## titanic data 
+
+# Clear environment
+rm(list = ls()) 
+# Clear plots
+dev.off()  # But only if there IS a plot
+
+# Clear console
+cat("\014")  # ctrl+L
+
+getwd()
+## packages for this script
+if (!require("caret")) install.packages('caret', dependencies = TRUE) #just in case caret has not been installed previously to this machine
+## Install pacman ("package manager") if needed
+if (!require("pacman")) install.packages("pacman")
+
+## load packages (including pacman) with pacman
+pacman::p_load(pacman, tidyverse, gmodels,ROCR, rpart, rpart.plot,caret)
+
+
+
+##############################################################
+
+##Read and Format training data #############################
+TitanicData<- read.csv("Data/Titanicall.csv")
+
+
+## declare factors
+TitanicData$Survived <- as.factor(TitanicData$Survived)
+TitanicData$Sex <- as.factor(TitanicData$Sex)
+TitanicData$Married <- as.factor(TitanicData$Married )
+TitanicData$Pclass <- as.factor(TitanicData$Pclass )
+TitanicData$Emb <- as.factor(TitanicData$Emb)
+
+
+str(TitanicData)
+summary(TitanicData)
+ 
+## Set training and Test data setsin 80% estimation and 20% test sample
+#  but maintaing the proportions of survived for each set
+
+set.seed(12222)  ## for demonstration we will use seed 5555 later.
+
+training.samples <- TitanicData$Survived %>%
+    createDataPartition(p = 0.80, list = FALSE) 
+Titanic_train <- TitanicData[training.samples, ]
+Titanic_test <- TitanicData[-training.samples, ]
+summary(Titanic_train$Survived) #note the % of survived is 38.3%
+summary(Titanic_test$Survived)  #not % saved is 38.2%
+
+rm(training.samples)
+
+
+######################################################################################
+
+#Classification tree
+# rpart is short for r partion. It is a standard package for classification and regression trees. 
+
+survived_model <- rpart(formula = Survived ~ Age + Sex + Pclass,
+                      data = Titanic_train, 
+                      method =  "class")
+summary(survived_model)
+
+
+# Display the results
+rpart.plot(x = survived_model, yesno = 2, type = 0, extra = 0)
+
+# Generate predicted classes using the model object
+survived_prediction <- predict(object = survived_model,  
+                            newdata = Titanic_test,   
+                            type = "class",
+                            )  
+head(survived_prediction)
+# Calculate the confusion matrix for the test set
+confusionMatrix(data = survived_prediction,       
+                reference = Titanic_test$Survived,
+                positive="1")  
+
+### The predictions are factors with 2 levels. You cannot use ROC or AUC because the prediction is a factor.
+
+
+
+##############################################################################################
+
+
+#
+
+
+###################################################################################################
+# Classification trees are unstable. Let's use a different seed for the data split
+
+set.seed(5555)  ## new partition.
+
+training.samples <- TitanicData$Survived %>%
+  createDataPartition(p = 0.80, list = FALSE) 
+Titanic_train <- TitanicData[training.samples, ]
+Titanic_test <- TitanicData[-training.samples, ]
+summary(Titanic_train$Survived) #note the % of survived is 38.3%
+summary(Titanic_test$Survived)  #not % saved is 38.2%
+
+
+# Train a gini-based model
+survived_model <- rpart(formula = Survived ~ Age + Sex + Pclass,
+                        data = Titanic_train, 
+                        method =  "class")
+
+# Display the results
+rpart.plot(x = survived_model, yesno = 2, type = 0, extra = 0)
+
+# Generate predicted classes using the model object
+survived_prediction <- predict(object = survived_model,  
+                               newdata = Titanic_test,   
+                               type = "class")
+
+#removing plot so you can see the effect of the tree splitting algorithm 
+dev.off()  # Clear plots# Clear plots
+
+#########################################################################################
+# in addition there is also more than one method to fit a decision tree
+
+
+# Train a gini-based model
+survived_model_gini <- rpart(formula = Survived ~ Age + Sex + Pclass,
+                        data = Titanic_train, 
+                        method =  "class",
+                       parms = list(split = "gini"))
+#Display the tree
+#you write the code
+rpart.plot(x = survived_model_gini, yesno = 2, type = 0, extra = 0)
+# Save the predictions into survived_prediction_gini
+# you write the code
+survived_prediction_gini <- predict(object = survived_model_gini,  
+                              newdata = Titanic_test,   
+                              type = "class")
+# Calculate the confusion matrix for the test set
+cmat_gini <- confusionMatrix(data = survived_prediction_gini,       
+                            reference = Titanic_test$Survived)
+cmat_gini
+###################################################
+#Now repeat for an infromation (entropy) measure 
+
+#Train a information-based model
+survived_model_information <- rpart(formula = Survived ~ Age + Sex + Pclass,
+                        data = Titanic_train, 
+                        method =  "class",
+                        parms = list(split = "information"))
+
+
+#Display the tree
+#you write the code
+rpart.plot(x = survived_model_information, yesno = 2, type = 0, extra = 0)
+
+# Save the predictions into survived_prediction_gini
+# you write the code
+survived_prediction_information <- predict(object = survived_model_information,  
+                                    newdata = Titanic_test,   
+                                    type = "class")
+# Calculate the confusion matrix for the test set
+cmat_information <- confusionMatrix(data = survived_prediction_information,       
+                             reference = Titanic_test$Survived)
+cmat_information
+
+###compare the models
+cmat_gini$overall["Accuracy"]
+cmat_information$overall["Accuracy"]
+
+#############################################################################################################################
+## The summary of tonight is that decisision trees are
+## easy to understand if not too many decision nodes (i.e. intermediate splits) but
+## are unstable to the training data selected and the method for calculating splits.
+
+

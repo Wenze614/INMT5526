@@ -1,0 +1,18 @@
+list[audi_Q3_rf,audi_Q3_train,audi_Q3_test,audi_Q3] <- audi_rf_model(audi,'Q3',0.8,42)
+audi_Q3_rf
+plot(audi_Q3_rf)
+varImpPlot(audi_Q3_rf)
+audiQ3_trainpred <- predict(audi_Q3_rf, newdata=audi_Q3_train)
+audiQ3_testpred <- predict(audi_Q3_rf, newdata=audi_Q3_test)
+defaultSummary(data.frame(obs=audi_Q3_train$price, pred=audiQ3_trainpred))
+defaultSummary(data.frame(obs=audi_Q3_test$price, pred=audiQ3_testpred))
+
+predresult_Q3 <- data.frame(obs = c(audi_Q3_train$price,audi_Q3_test$price),
+                            pred = c(audiQ3_trainpred,audiQ3_testpred),
+                            group = c(rep("Train", length(audiQ3_trainpred)),
+                                      rep("Test",length(audiQ3_testpred))))
+ggplot(predresult_Q3, 
+       aes(x = obs, y = pred, fill=group, color=group))+
+  geom_point(shape=21,size=1)+
+  geom_smooth(method='lm', se=F, size=1)+
+  geom_abline(intercept=0, slope=1, size=1)
